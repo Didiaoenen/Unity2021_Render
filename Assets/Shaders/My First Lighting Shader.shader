@@ -5,11 +5,18 @@
     {
 		_Tint ("Tint", Color) = (1, 1, 1, 1)
 		_MainTex ("Albedo", 2D) = "white" {}
+
 		[NoScaleOffset] _NormalMap ("Normals", 2D) = "bump" {}
 		_BumpScale ("Bump Scale", Float) = 1
+		
+		[NoScaleOffset] _MetallicMap ("Metallic", 2D) = "write" {}
 		[Gamma] _Metallic ("Metallic", Range(0, 1)) = 0
 		_Smoothness ("Smoothness", Range(0, 1)) = 0.1
-		_DetailTex ("Detail Texture", 2D) = "gray" {}
+		
+		[NoScaleOffset] _EmissionMap ("Emission", 2D) = "black" {}
+		_Emission ("Emission", Color) = (0, 0, 0)
+
+		_DetailTex ("Detail Albedo", 2D) = "gray" {}
 		[NoScaleOffset] _DetailNormalMap ("Detail Normals", 2D) = "bump" {}
 		_DetailBumpScale ("Detail Bump Scale", Float) = 1
 	}
@@ -33,6 +40,10 @@
 			CGPROGRAM
 
 			#pragma target 3.0
+
+			#pragma shader_feature _ _METALLIC_MAP
+			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
+			#pragma shader_feature _ _EMISSION_MAP
 
 			#pragma multi_compile _ SHADOWS_SCREEN
 			#pragma multi_compile _ VERTEXLIGHT_ON
@@ -60,6 +71,9 @@
 			CGPROGRAM
 
 			#pragma target 3.0
+
+			#pragma shader_feature _ _METALLIC_MAP
+			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 
 			#pragma multi_compile_fwdadd_fullshadows
 
@@ -92,4 +106,6 @@
 			ENDCG
 		}
 	}
+
+	CustomEditor "MyLightingShaderGUI"
 }
