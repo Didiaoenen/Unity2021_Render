@@ -1,6 +1,4 @@
-﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
-
-#if !defined(MY_LIGHTING_INCLUDED)
+﻿#if !defined(MY_LIGHTING_INCLUDED)
 #define MY_LIGHTING_INCLUDED
 
 #include "UnityPBSLighting.cginc"
@@ -48,7 +46,7 @@ struct Interpolators
 
 	float3 worldPos : TEXCOORD4;
 
-    SHADOW_COORDS(5)
+	SHADOW_COORDS(5)
 
 	#if defined(VERTEXLIGHT_ON)
 		float3 vertexLightColor : TEXCOORD6;
@@ -72,6 +70,15 @@ float3 GetAlbedo(Interpolators i)
 		albedo = lerp(albedo, albedo * details, GetDetailMask(i));
 	#endif
 	return albedo;
+}
+
+float GetAlpha(Interpolators i)
+{
+	float alpha = _Tint.a;
+	#if !defined(_SMOOTHNESS_ALBEDO)
+		alpha *= tex2D(_MainTex, i.uv.xy).a;
+	#endif
+	return alpha;
 }
 
 float3 GetTangentSpaceNormal(Interpolators i)
@@ -130,16 +137,7 @@ float3 GetEmission(Interpolators i)
 	#endif
 }
 
-float GetAlpha(Interpolators i)
-{
-	float alpha = _Tint.a;
-	#if !defined(_SMOOTHNESS_ALBEDO)
-		alpha *= tex2D(_MainTex, i.uv.xy).a;
-	#endif
-	return alpha;
-}
-
-void ComputeVertexLightColor (inout Interpolators i) 
+void ComputeVertexLightColor(inout Interpolators i)
 {
 	#if defined(VERTEXLIGHT_ON)
 		i.vertexLightColor = Shade4PointLights(
@@ -151,7 +149,7 @@ void ComputeVertexLightColor (inout Interpolators i)
 	#endif
 }
 
-float3 CreateBinormal (float3 normal, float3 tangent, float binormalSign) 
+float3 CreateBinormal(float3 normal, float3 tangent, float binormalSign)
 {
 	return cross(normal, tangent.xyz) * (binormalSign * unity_WorldTransformParams.w);
 }
@@ -169,17 +167,17 @@ Interpolators MyVertexProgram (VertexData v)
 		i.tangent = UnityObjectToWorldDir(v.tangent.xyz);
 		i.binormal = CreateBinormal(i.normal, i.tangent, v.tangent.w);
 	#endif
-		
+
 	i.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
 	i.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
-	
-    TRANSFER_SHADOW(i)
 
-    ComputeVertexLightColor(i);
+	TRANSFER_SHADOW(i);
+
+	ComputeVertexLightColor(i);
 	return i;
 }
 
-UnityLight CreateLight (Interpolators i) 
+UnityLight CreateLight(Interpolators i)
 {
 	UnityLight light;
 
@@ -189,8 +187,8 @@ UnityLight CreateLight (Interpolators i)
 		light.dir = _WorldSpaceLightPos0.xyz;
 	#endif
 
-    UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
-
+	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
+	
 	light.color = _LightColor0.rgb * attenuation;
 	light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
@@ -198,19 +196,19 @@ UnityLight CreateLight (Interpolators i)
 
 float3 BoxProjection(float3 direction, float3 position, float4 cubemapPosition, float3 boxMin, float3 boxMax)
 {
-    #if UNITY_SPECCUBE_BOX_PROJECTION
-        UNITY_BRANCH
-        if (cubemapPosition.w > 0)
-        {
-            float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
-            float scalar = min(min(factors.x, factors.y), factors.z);
-            direction = direction * scalar + (position - cubemapPosition);
-        }
-    #endif
-    return direction;
+	#if UNITY_SPECCUBE_BOX_PROJECTION
+		UNITY_BRANCH
+		if (cubemapPosition.w > 0) 
+		{
+			float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
+			float scalar = min(min(factors.x, factors.y), factors.z);
+			direction = direction * scalar + (position - cubemapPosition);
+		}
+	#endif
+	return direction;
 }
 
-UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir) 
+UnityIndirect CreateIndirectLight(Interpolators i, float3 viewDir) 
 {
 	UnityIndirect indirectLight;
 	indirectLight.diffuse = 0;
@@ -222,37 +220,38 @@ UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir)
 
 	#if defined(FORWARD_BASE_PASS)
 		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
-        float3 reflectionDir = reflect(-viewDir, i.normal);
-        Unity_GlossyEnvironmentData envData;
-        envData.roughness = 1 - _Smoothness;
-        envData.reflUVW = BoxProjection(
-            reflectionDir, i.worldPos, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
-        );
-        float3 probe0 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
-        envData.reflUVW = BoxProjection(
-            reflectionDir, i.worldPos, unity_SpecCube1_ProbePosition, unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
-        );
-
-        #if UNITY_SPECCUBE_BLENDING
-            float interpolator = unity_SpecCube0_BoxMin.w;
-            UNITY_BRANCH
-            if (interpolator < 0.99999)
-            {
-                float3 probe1 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1, unity_SpecCube0), unity_SpecCube1_HDR, envData);
-                indirectLight.specular = lerp(probe1, probe0, interpolator);
-            }
-            else
-            {
-                indirectLight.specular = probe0;
-            }
-        #else
-            indirectLight.specular = probe0;
-        #endif
+		float3 reflectionDir = reflect(-viewDir, i.normal);
+		Unity_GlossyEnvironmentData envData;
+		envData.roughness = 1 - GetSmoothness(i);
+		envData.reflUVW = BoxProjection(
+			reflectionDir, i.worldPos, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
+		);
+		float3 probe0 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
+		
+		envData.reflUVW = BoxProjection(
+			reflectionDir, i.worldPos, unity_SpecCube1_ProbePosition, unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
+		);
+		#if UNITY_SPECCUBE_BLENDING
+			float interpolator = unity_SpecCube0_BoxMin.w;
+			UNITY_BRANCH
+			if (interpolator < 0.99999) {
+				float3 probe1 = Unity_GlossyEnvironment(
+					UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1, unity_SpecCube0), unity_SpecCube0_HDR, envData
+				);
+				indirectLight.specular = lerp(probe1, probe0, interpolator);
+			}
+			else 
+			{
+				indirectLight.specular = probe0;
+			}
+		#else
+			indirectLight.specular = probe0;
+		#endif
 
 		float occlusion = GetOcclusion(i);
 		indirectLight.diffuse *= occlusion;
 		indirectLight.specular *= occlusion;
-    #endif
+	#endif
 
 	return indirectLight;
 }
@@ -273,7 +272,7 @@ void InitializeFragmentNormal(inout Interpolators i)
 	);
 }
 
-float4 MyFragmentProgram (Interpolators i) : SV_TARGET 
+float4 MyFragmentProgram(Interpolators i) : SV_TARGET 
 {
 	float alpha = GetAlpha(i);
 	#if defined(_RENDERING_CUTOUT)

@@ -2,19 +2,19 @@
 {
 
 	Properties 
-    {
+	{
 		_Tint ("Tint", Color) = (1, 1, 1, 1)
 		_MainTex ("Albedo", 2D) = "white" {}
 
 		[NoScaleOffset] _NormalMap ("Normals", 2D) = "bump" {}
 		_BumpScale ("Bump Scale", Float) = 1
-		
-		[NoScaleOffset] _MetallicMap ("Metallic", 2D) = "write" {}
+
+		[NoScaleOffset] _MetallicMap ("Metallic", 2D) = "white" {}
 		[Gamma] _Metallic ("Metallic", Range(0, 1)) = 0
 		_Smoothness ("Smoothness", Range(0, 1)) = 0.1
-		
+
 		[NoScaleOffset] _OcclusionMap ("Occlusion", 2D) = "white" {}
-		_OcclusionStrength ("Occlusion Strength", Range(0, 1)) = 1
+		_OcclusionStrength("Occlusion Strength", Range(0, 1)) = 1
 
 		[NoScaleOffset] _EmissionMap ("Emission", 2D) = "black" {}
 		_Emission ("Emission", Color) = (0, 0, 0)
@@ -38,12 +38,12 @@
 	ENDCG
 
 	SubShader 
-    {
+	{
 
 		Pass 
-        {
+		{
 			Tags 
-            {
+			{
 				"LightMode" = "ForwardBase"
 			}
 			Blend [_SrcBlend] [_DstBlend]
@@ -77,9 +77,9 @@
 		}
 
 		Pass 
-        {
+		{
 			Tags 
-            {
+			{
 				"LightMode" = "ForwardAdd"
 			}
 
@@ -99,7 +99,7 @@
 			#pragma shader_feature _DETAIL_NORMAL_MAP
 
 			#pragma multi_compile_fwdadd_fullshadows
-
+			
 			#pragma vertex MyVertexProgram
 			#pragma fragment MyFragmentProgram
 
@@ -108,16 +108,20 @@
 			ENDCG
 		}
 
-        Pass 
-        {
+		Pass 
+		{
 			Tags 
-            {
+			{
 				"LightMode" = "ShadowCaster"
 			}
 
 			CGPROGRAM
 
 			#pragma target 3.0
+
+			#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
+			#pragma shader_feature _SEMITRANSPARENT_SHADOWS
+			#pragma shader_feature _SMOOTHNESS_ALBEDO
 
 			#pragma multi_compile_shadowcaster
 

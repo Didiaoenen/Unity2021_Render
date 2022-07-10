@@ -135,11 +135,11 @@ public class MyLightingShaderGUI : ShaderGUI
     void DoSmoothness()
     {
         SmoothnessSource source = SmoothnessSource.Uniform;
-        if (IsKeyworlEnabled("_SMOOTHNESS_ALBEDO"))
+        if (IsKeywordEnabled("_SMOOTHNESS_ALBEDO"))
         {
             source = SmoothnessSource.Albedo;
         }
-        else if (IsKeyworlEnabled("_SMOOTHNESS_METALLIC"))
+        else if (IsKeywordEnabled("_SMOOTHNESS_METALLIC"))
         {
             source = SmoothnessSource.Metallic;
         }
@@ -258,7 +258,7 @@ public class MyLightingShaderGUI : ShaderGUI
         }
     }
 
-    bool IsKeyworlEnabled(string keyword)
+    bool IsKeywordEnabled(string keyword)
     {
         return target.IsKeywordEnabled(keyword);
     }
@@ -272,16 +272,16 @@ public class MyLightingShaderGUI : ShaderGUI
     {
         RenderingMode mode = RenderingMode.Opaque;
         shouldShowAlphaCutoff = false;
-        if (IsKeyworlEnabled("_RENDERING_CUTOUT"))
+        if (IsKeywordEnabled("_RENDERING_CUTOUT"))
         {
             mode = RenderingMode.Cutout;
             shouldShowAlphaCutoff = true;
         }
-        else if (IsKeyworlEnabled("_RENDERING_FADE"))
+        else if (IsKeywordEnabled("_RENDERING_FADE"))
         {
             mode = RenderingMode.Fade;
         }
-        else if (IsKeyworlEnabled("_RENDERING_TRANSPARENT"))
+        else if (IsKeywordEnabled("_RENDERING_TRANSPARENT"))
         {
             mode = RenderingMode.Transparent;
         }
@@ -305,5 +305,25 @@ public class MyLightingShaderGUI : ShaderGUI
                 m.SetInt("_ZWrite", settings.zWrite ? 1 : 0);
             }
         }
+
+        if (mode == RenderingMode.Fade || mode == RenderingMode.Transparent)
+        {
+            DoSemitransparentShadows();
+        }
+    }
+
+    void DoSemitransparentShadows()
+    {
+		EditorGUI.BeginChangeCheck();
+		bool semitransparentShadows =
+			EditorGUILayout.Toggle(MakeLabel("Semitransp. Shadows", "Semitransparent Shadows"), IsKeywordEnabled("_SEMITRANSPARENT_SHADOWS"));
+		if (EditorGUI.EndChangeCheck()) 
+        {
+			SetKeyword("_SEMITRANSPARENT_SHADOWS", semitransparentShadows);
+		}
+		if (!semitransparentShadows) 
+        {
+			shouldShowAlphaCutoff = true;
+		}
     }
 }
