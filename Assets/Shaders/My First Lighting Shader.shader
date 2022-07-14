@@ -34,6 +34,7 @@
 	CGINCLUDE
 
 	#define BINORMAL_PER_FRAGMENT
+	#define FOG_DISTANCE
 
 	ENDCG
 
@@ -65,6 +66,7 @@
 
 			#pragma multi_compile _ SHADOWS_SCREEN
 			#pragma multi_compile _ VERTEXLIGHT_ON
+			#pragma multi_compile_fog
 
 			#pragma vertex MyVertexProgram
 			#pragma fragment MyFragmentProgram
