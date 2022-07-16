@@ -24,15 +24,13 @@ float _Cutoff;
 
 sampler3D _DitherMaskLOD;
 
-struct VertexData
-{
+struct VertexData {
 	float4 position : POSITION;
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
 };
 
-struct InterpolatorsVertex
-{
+struct InterpolatorsVertex {
 	float4 position : SV_POSITION;
 	#if SHADOWS_NEED_UV
 		float2 uv : TEXCOORD0;
@@ -42,8 +40,7 @@ struct InterpolatorsVertex
 	#endif
 };
 
-struct Interpolators
-{
+struct Interpolators {
 	#if SHADOWS_SEMITRANSPARENT
 		UNITY_VPOS_TYPE vpos : VPOS;
 	#else
@@ -58,8 +55,7 @@ struct Interpolators
 	#endif
 };
 
-float GetAlpha (Interpolators i)
-{
+float GetAlpha (Interpolators i) {
 	float alpha = _Color.a;
 	#if SHADOWS_NEED_UV
 		alpha *= tex2D(_MainTex, i.uv.xy).a;
@@ -67,8 +63,7 @@ float GetAlpha (Interpolators i)
 	return alpha;
 }
 
-InterpolatorsVertex MyShadowVertexProgram (VertexData v)
-{
+InterpolatorsVertex MyShadowVertexProgram (VertexData v) {
 	InterpolatorsVertex i;
 	#if defined(SHADOWS_CUBE)
 		i.position = UnityObjectToClipPos(v.position);
@@ -85,8 +80,7 @@ InterpolatorsVertex MyShadowVertexProgram (VertexData v)
 	return i;
 }
 
-float4 MyShadowFragmentProgram (Interpolators i) : SV_TARGET
-{
+float4 MyShadowFragmentProgram (Interpolators i) : SV_TARGET {
 	float alpha = GetAlpha(i);
 	#if defined(_RENDERING_CUTOUT)
 		clip(alpha - _Cutoff);

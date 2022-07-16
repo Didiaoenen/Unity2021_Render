@@ -11,6 +11,18 @@
 	#define FOG_ON 1
 #endif
 
+#if !defined(LIGHTMAP_ON) && defined(SHADOWS_SCREEN)
+	#if defined(SHADOWS_SHADOWMASK) && !defined(UNITY_NO_SCREENSPACE_SHADOWS)
+		#define ADDITIONAL_MASKED_DIRECTIONAL_SHADOWS 1
+	#endif
+#endif
+
+#if defined(LIGHTMAP_ON) && defined(SHADOWS_SCREEN)
+	#if defined(LIGHTMAP_SHADOW_MIXING) && !defined(SHADOWS_SHADOWMASK)
+		#define SUBTRACTIVE_LIGHTING 1
+	#endif
+#endif
+
 float4 _Color;
 sampler2D _MainTex, _DetailTex, _DetailMask;
 float4 _MainTex_ST, _DetailTex_ST;
@@ -30,8 +42,7 @@ float3 _Emission;
 
 float _Cutoff;
 
-struct VertexData
-{
+struct VertexData {
 	float4 vertex : POSITION;
 	float3 normal : NORMAL;
 	float4 tangent : TANGENT;
@@ -39,8 +50,7 @@ struct VertexData
 	float2 uv1 : TEXCOORD1;
 };
 
-struct Interpolators
-{
+struct Interpolators {
 	float4 pos : SV_POSITION;
 	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
@@ -58,19 +68,18 @@ struct Interpolators
 		float3 worldPos : TEXCOORD4;
 	#endif
 
-	SHADOW_COORDS(5)
+	UNITY_SHADOW_COORDS(5)
 
 	#if defined(VERTEXLIGHT_ON)
 		float3 vertexLightColor : TEXCOORD6;
 	#endif
 
-	#if defined(LIGHTMAP_ON)
+	#if defined(LIGHTMAP_ON) || ADDITIONAL_MASKED_DIRECTIONAL_SHADOWS
 		float2 lightmapUV : TEXCOORD6;
 	#endif
 };
 
-float GetDetailMask (Interpolators i)
-{
+float GetDetailMask (Interpolators i) {
 	#if defined(_DETAIL_MASK)
 		return tex2D(_DetailMask, i.uv.xy).a;
 	#else
@@ -78,8 +87,7 @@ float GetDetailMask (Interpolators i)
 	#endif
 }
 
-float3 GetAlbedo (Interpolators i)
-{
+float3 GetAlbedo (Interpolators i) {
 	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Color.rgb;
 	#if defined (_DETAIL_ALBEDO_MAP)
 		float3 details = tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
@@ -88,8 +96,7 @@ float3 GetAlbedo (Interpolators i)
 	return albedo;
 }
 
-float GetAlpha (Interpolators i)
-{
+float GetAlpha (Interpolators i) {
 	float alpha = _Color.a;
 	#if !defined(_SMOOTHNESS_ALBEDO)
 		alpha *= tex2D(_MainTex, i.uv.xy).a;
@@ -97,8 +104,7 @@ float GetAlpha (Interpolators i)
 	return alpha;
 }
 
-float3 GetTangentSpaceNormal (Interpolators i)
-{
+float3 GetTangentSpaceNormal (Interpolators i) {
 	float3 normal = float3(0, 0, 1);
 	#if defined(_NORMAL_MAP)
 		normal = UnpackScaleNormal(tex2D(_NormalMap, i.uv.xy), _BumpScale);
@@ -111,8 +117,7 @@ float3 GetTangentSpaceNormal (Interpolators i)
 	return normal;
 }
 
-float GetMetallic (Interpolators i)
-{
+float GetMetallic (Interpolators i) {
 	#if defined(_METALLIC_MAP)
 		return tex2D(_MetallicMap, i.uv.xy).r;
 	#else
@@ -120,8 +125,7 @@ float GetMetallic (Interpolators i)
 	#endif
 }
 
-float GetSmoothness (Interpolators i)
-{
+float GetSmoothness (Interpolators i) {
 	float smoothness = 1;
 	#if defined(_SMOOTHNESS_ALBEDO)
 		smoothness = tex2D(_MainTex, i.uv.xy).a;
@@ -131,8 +135,7 @@ float GetSmoothness (Interpolators i)
 	return smoothness * _Smoothness;
 }
 
-float GetOcclusion (Interpolators i)
-{
+float GetOcclusion (Interpolators i) {
 	#if defined(_OCCLUSION_MAP)
 		return lerp(1, tex2D(_OcclusionMap, i.uv.xy).g, _OcclusionStrength);
 	#else
@@ -140,8 +143,7 @@ float GetOcclusion (Interpolators i)
 	#endif
 }
 
-float3 GetEmission (Interpolators i)
-{
+float3 GetEmission (Interpolators i) {
 	#if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
 		#if defined(_EMISSION_MAP)
 			return tex2D(_EmissionMap, i.uv.xy) * _Emission;
@@ -153,8 +155,7 @@ float3 GetEmission (Interpolators i)
 	#endif
 }
 
-void ComputeVertexLightColor (inout Interpolators i)
-{
+void ComputeVertexLightColor (inout Interpolators i) {
 	#if defined(VERTEXLIGHT_ON)
 		i.vertexLightColor = Shade4PointLights(
 			unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,
@@ -165,15 +166,14 @@ void ComputeVertexLightColor (inout Interpolators i)
 	#endif
 }
 
-float3 CreateBinormal (float3 normal, float3 tangent, float binormalSign)
-{
+float3 CreateBinormal (float3 normal, float3 tangent, float binormalSign) {
 	return cross(normal, tangent.xyz) *
 		(binormalSign * unity_WorldTransformParams.w);
 }
 
-Interpolators MyVertexProgram (VertexData v)
-{
+Interpolators MyVertexProgram (VertexData v) {
 	Interpolators i;
+	UNITY_INITIALIZE_OUTPUT(Interpolators, i);
 	i.pos = UnityObjectToClipPos(v.vertex);
 	i.worldPos.xyz = mul(unity_ObjectToWorld, v.vertex);
 	#if FOG_DEPTH
@@ -191,21 +191,37 @@ Interpolators MyVertexProgram (VertexData v)
 	i.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
 	i.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
 
-	#if defined(LIGHTMAP_ON)
+	#if defined(LIGHTMAP_ON) || ADDITIONAL_MASKED_DIRECTIONAL_SHADOWS
 		i.lightmapUV = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
 	#endif
 
-	TRANSFER_SHADOW(i);
+	UNITY_TRANSFER_SHADOW(i, v.uv1);
 
 	ComputeVertexLightColor(i);
 	return i;
+}
+
+float FadeShadows (Interpolators i, float attenuation) {
+	#if HANDLE_SHADOWS_BLENDING_IN_GI || ADDITIONAL_MASKED_DIRECTIONAL_SHADOWS
+		// UNITY_LIGHT_ATTENUATION doesn't fade shadows for us.
+		#if ADDITIONAL_MASKED_DIRECTIONAL_SHADOWS
+			attenuation = SHADOW_ATTENUATION(i);
+		#endif
+		float viewZ = dot(_WorldSpaceCameraPos - i.worldPos, UNITY_MATRIX_V[2].xyz);
+		float shadowFadeDistance = UnityComputeShadowFadeDistance(i.worldPos, viewZ);
+		float shadowFade = UnityComputeShadowFade(shadowFadeDistance);
+		float bakedAttenuation = UnitySampleBakedOcclusion(i.lightmapUV, i.worldPos);
+		attenuation = UnityMixRealtimeAndBakedShadows(attenuation, bakedAttenuation, shadowFade);
+	#endif
+
+	return attenuation;
 }
 
 UnityLight CreateLight (Interpolators i)
 {
 	UnityLight light;
 
-	#if defined(DEFERRED_PASS)
+	#if defined(DEFERRED_PASS) || SUBTRACTIVE_LIGHTING
 		light.dir = float3(0, 1, 0);
 		light.color = 0;
 	#else
@@ -216,14 +232,15 @@ UnityLight CreateLight (Interpolators i)
 		#endif
 
 		UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
-		
+		attenuation = FadeShadows(i, attenuation);
+
 		light.color = _LightColor0.rgb * attenuation;
 	#endif
+
 	return light;
 }
 
-float3 BoxProjection (float3 direction, float3 position, float4 cubemapPosition, float3 boxMin, float3 boxMax)
-{
+float3 BoxProjection (float3 direction, float3 position, float4 cubemapPosition, float3 boxMin, float3 boxMax) {
 	#if UNITY_SPECCUBE_BOX_PROJECTION
 		UNITY_BRANCH
 		if (cubemapPosition.w > 0)
@@ -236,8 +253,21 @@ float3 BoxProjection (float3 direction, float3 position, float4 cubemapPosition,
 	return direction;
 }
 
-UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir)
-{
+void ApplySubtractiveLighting (Interpolators i, inout UnityIndirect indirectLight) {
+	#if SUBTRACTIVE_LIGHTING
+		UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
+		attenuation = FadeShadows(i, attenuation);
+
+		float ndotl = saturate(dot(i.normal, _WorldSpaceLightPos0.xyz));
+		float3 shadowedLightEstimate = ndotl * (1 - attenuation) * _LightColor0.rgb;
+		float3 subtractedLight = indirectLight.diffuse - shadowedLightEstimate;
+		subtractedLight = max(subtractedLight, unity_ShadowColor.rgb);
+		subtractedLight = lerp(subtractedLight, indirectLight.diffuse, _LightShadowData.x);
+		indirectLight.diffuse = min(subtractedLight, indirectLight.diffuse);
+	#endif
+}
+
+UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir) {
 	UnityIndirect indirectLight;
 	indirectLight.diffuse = 0;
 	indirectLight.specular = 0;
@@ -254,6 +284,8 @@ UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir)
 				float4 lightmapDirection = UNITY_SAMPLE_TEX2D_SAMPLER(unity_LightmapInd, unity_Lightmap, i.lightmapUV);
 				indirectLight.diffuse = DecodeDirectionalLightmap(indirectLight.diffuse, lightmapDirection, i.normal);
 			#endif
+
+			ApplySubtractiveLighting(i, indirectLight);
 		#else
 			indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
 		#endif
@@ -270,15 +302,13 @@ UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir)
 		#if UNITY_SPECCUBE_BLENDING
 			float interpolator = unity_SpecCube0_BoxMin.w;
 			UNITY_BRANCH
-			if (interpolator < 0.99999)
-			{
+			if (interpolator < 0.99999) {
 				float3 probe1 = Unity_GlossyEnvironment(
 					UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1, unity_SpecCube0), unity_SpecCube0_HDR, envData
 				);
 				indirectLight.specular = lerp(probe1, probe0, interpolator);
 			}
-			else
-			{
+			else {
 				indirectLight.specular = probe0;
 			}
 		#else
@@ -297,8 +327,7 @@ UnityIndirect CreateIndirectLight (Interpolators i, float3 viewDir)
 	return indirectLight;
 }
 
-void InitializeFragmentNormal (inout Interpolators i)
-{
+void InitializeFragmentNormal (inout Interpolators i) {
 	float3 tangentSpaceNormal = GetTangentSpaceNormal(i);
 	#if defined(BINORMAL_PER_FRAGMENT)
 		float3 binormal = CreateBinormal(i.normal, i.tangent.xyz, i.tangent.w);
@@ -313,8 +342,7 @@ void InitializeFragmentNormal (inout Interpolators i)
 	);
 }
 
-float4 ApplyFog (float4 color, Interpolators i)
-{
+float4 ApplyFog (float4 color, Interpolators i) {
 	#if FOG_ON
 		float viewDistance = length(_WorldSpaceCameraPos - i.worldPos.xyz);
 		#if FOG_DEPTH
@@ -330,20 +358,22 @@ float4 ApplyFog (float4 color, Interpolators i)
 	return color;
 }
 
-struct FragmentOutput
-{
+struct FragmentOutput {
 	#if defined(DEFERRED_PASS)
 		float4 gBuffer0 : SV_Target0;
 		float4 gBuffer1 : SV_Target1;
 		float4 gBuffer2 : SV_Target2;
 		float4 gBuffer3 : SV_Target3;
+
+		#if defined(SHADOWS_SHADOWMASK) && (UNITY_ALLOWED_MRT_COUNT > 4)
+			float4 gBuffer4 : SV_Target4;
+		#endif
 	#else
 		float4 color : SV_Target;
 	#endif
 };
 
-FragmentOutput MyFragmentProgram (Interpolators i)
-{
+FragmentOutput MyFragmentProgram (Interpolators i) {
 	float alpha = GetAlpha(i);
 	#if defined(_RENDERING_CUTOUT)
 		clip(alpha - _Cutoff);
@@ -380,6 +410,14 @@ FragmentOutput MyFragmentProgram (Interpolators i)
 		output.gBuffer1.a = GetSmoothness(i);
 		output.gBuffer2 = float4(i.normal * 0.5 + 0.5, 1);
 		output.gBuffer3 = color;
+
+		#if defined(SHADOWS_SHADOWMASK) && (UNITY_ALLOWED_MRT_COUNT > 4)
+			float2 shadowUV = 0;
+			#if defined(LIGHTMAP_ON)
+				shadowUV = i.lightmapUV;
+			#endif
+			output.gBuffer4 = UnityGetRawBakedOcclusions(shadowUV, i.worldPos.xyz);
+		#endif
 	#else
 		output.color = ApplyFog(color, i);
 	#endif
