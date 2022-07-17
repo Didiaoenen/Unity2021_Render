@@ -1,14 +1,11 @@
-﻿Shader "Custom/DeferredShading" 
-{
+﻿Shader "Custom/DeferredShading" {
 	
-	Properties 
-	{
+	Properties {
 	}
 
-	SubShader 
-	{
-		Pass 
-		{
+	SubShader {
+
+		Pass {
 			Blend [_SrcBlend] [_DstBlend]
 			ZWrite Off
 
@@ -28,8 +25,7 @@
 			ENDCG
 		}
 
-		Pass 
-		{
+		Pass {
 			Cull Off
 			ZTest Always
 			ZWrite Off
@@ -53,28 +49,24 @@
 
 			sampler2D _LightBuffer;
 
-			struct VertexData 
-			{
+			struct VertexData {
 				float4 vertex : POSITION;
 				float2 uv : TEXCOORD0;
 			};
 
-			struct Interpolators 
-			{
+			struct Interpolators {
 				float4 pos : SV_POSITION;
 				float2 uv : TEXCOORD0;
 			};
 
-			Interpolators VertexProgram (VertexData v) 
-			{
+			Interpolators VertexProgram (VertexData v) {
 				Interpolators i;
 				i.pos = UnityObjectToClipPos(v.vertex);
 				i.uv = v.uv;
 				return i;
 			}
 
-			float4 FragmentProgram (Interpolators i) : SV_Target 
-			{
+			float4 FragmentProgram (Interpolators i) : SV_Target {
 				return -log2(tex2D(_LightBuffer, i.uv));
 			}
 

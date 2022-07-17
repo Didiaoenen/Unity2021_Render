@@ -4,13 +4,6 @@
 #include "UnityPBSLighting.cginc"
 #include "UnityMetaPass.cginc"
 
-#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
-	#if !defined(FOG_DISTANCE)
-		#define FOG_DEOTH 1
-	#endif
-	#define FOG_ON 1
-#endif
-
 float4 _Color;
 sampler2D _MainTex, _DetailTex, _DetailMask;
 float4 _MainTex_ST, _DetailTex_ST;
@@ -90,7 +83,9 @@ float4 MyLightmappingFragmentProgram (Interpolators i) : SV_TARGET {
 	UnityMetaInput surfaceData;
 	surfaceData.Emission = GetEmission(i);
 	float oneMinusReflectivity;
-	surfaceData.Albedo = DiffuseAndSpecularFromMetallic(GetAlbedo(i), GetMetallic(i), surfaceData.SpecularColor, oneMinusReflectivity);
+	surfaceData.Albedo = DiffuseAndSpecularFromMetallic(
+		GetAlbedo(i), GetMetallic(i),surfaceData.SpecularColor, oneMinusReflectivity
+	);
 
 	float roughness = SmoothnessToRoughness(GetSmoothness(i)) * 0.5;
 	surfaceData.Albedo += surfaceData.SpecularColor * roughness;

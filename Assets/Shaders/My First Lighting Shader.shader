@@ -1,8 +1,6 @@
-﻿Shader "Custom/My First Lighting Shader"
-{
+﻿Shader "Custom/My First Lighting Shader" {
 
-	Properties
-	{
+	Properties {
 		_Color ("Tint", Color) = (1, 1, 1, 1)
 		_MainTex ("Albedo", 2D) = "white" {}
 
@@ -12,6 +10,9 @@
 		[NoScaleOffset] _MetallicMap ("Metallic", 2D) = "white" {}
 		[Gamma] _Metallic ("Metallic", Range(0, 1)) = 0
 		_Smoothness ("Smoothness", Range(0, 1)) = 0.1
+
+		[NoScaleOffset] _ParallaxMap ("Parallax", 2D) = "black" {}
+		_ParallaxStrength("Parallax Strength", Range(0, 1)) = 1
 
 		[NoScaleOffset] _OcclusionMap ("Occlusion", 2D) = "white" {}
 		_OcclusionStrength("Occlusion Strength", Range(0, 1)) = 1
@@ -36,15 +37,20 @@
 	#define BINORMAL_PER_FRAGMENT
 	#define FOG_DISTANCE
 
+	#define PARALLAX_BIAS 0
+	// #define PARALLAX_OFFSET_LIMITING
+	#define PARALLAX_RAYMARCHING_STEPS 10
+	#define PARALLAX_RAYMARCHING_INTERPOLATE
+	// #define PARALLAX_RAYMARCHING_SEARCH_STEPS 3
+	#define PARALLAX_FUNCTION ParallaxRaymarching
+	#define PARALLAX_SUPPORT_SCALED_DYNAMIC_BATCHING
+
 	ENDCG
 
-	SubShader
-	{
+	SubShader {
 
-		Pass
-		{
-			Tags
-			{
+		Pass {
+			Tags {
 				"LightMode" = "ForwardBase"
 			}
 			Blend [_SrcBlend] [_DstBlend]
@@ -58,6 +64,7 @@
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
+			#pragma shader_feature _PARALLAX_MAP
 			#pragma shader_feature _OCCLUSION_MAP
 			#pragma shader_feature _EMISSION_MAP
 			#pragma shader_feature _DETAIL_MASK
@@ -68,6 +75,8 @@
 
 			#pragma multi_compile_fwdbase
 			#pragma multi_compile_fog
+			#pragma multi_compile_instancing
+			#pragma instancing_options lodfade
 
 			#pragma vertex MyVertexProgram
 			#pragma fragment MyFragmentProgram
@@ -79,10 +88,8 @@
 			ENDCG
 		}
 
-		Pass
-		{
-			Tags
-			{
+		Pass {
+			Tags {
 				"LightMode" = "ForwardAdd"
 			}
 
@@ -114,10 +121,8 @@
 			ENDCG
 		}
 
-		Pass
-		{
-			Tags
-			{
+		Pass {
+			Tags {
 				"LightMode" = "Deferred"
 			}
 
@@ -139,6 +144,8 @@
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 
 			#pragma multi_compile_prepassfinal
+			#pragma multi_compile_instancing
+			#pragma instancing_options lodfade
 
 			#pragma vertex MyVertexProgram
 			#pragma fragment MyFragmentProgram
@@ -150,10 +157,8 @@
 			ENDCG
 		}
 
-		Pass
-		{
-			Tags
-			{
+		Pass {
+			Tags {
 				"LightMode" = "ShadowCaster"
 			}
 
@@ -168,6 +173,8 @@
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 
 			#pragma multi_compile_shadowcaster
+			#pragma multi_compile_instancing
+			#pragma instancing_options lodfade
 
 			#pragma vertex MyShadowVertexProgram
 			#pragma fragment MyShadowFragmentProgram
@@ -177,10 +184,8 @@
 			ENDCG
 		}
 
-		Pass
-		{
-			Tags
-			{
+		Pass {
+			Tags {
 				"LightMode" = "Meta"
 			}
 
